@@ -18,7 +18,7 @@ class ChatGLM(LLM):
     # 来源于nucleus sampling，采用的是累计概率的方式，0.1意味着只考虑由前10%累计概率组成的词汇
     top_p: float = 0.9
     # endpoint url
-    endpoint = "https://infer-bf61ca29-5639-4c0f-b49d-4d5e1df1e033-service.rde-ws.lanrui-ai.com"
+    endpoint = "your model endpoint"
     history = []
     history_len = 10
 
