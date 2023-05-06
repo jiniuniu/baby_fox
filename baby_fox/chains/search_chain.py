@@ -1,21 +1,27 @@
+import json
+import logging
 import threading
 from typing import Dict, List
 
 from langchain import PromptTemplate
+from langchain.base_language import BaseLanguageModel
 from langchain.chains.base import Chain
-from langchain.llms.base import LLM
+from langchain.utilities.google_search import GoogleSearchAPIWrapper
 
 from baby_fox.chains.prompt import CONTEXT_BASED_ANSWER_TEMPL, QUERY_EXPANSION_TEMPL
-from baby_fox.search_tools.base import BaseSearcher
+
+logging.basicConfig(level=logging.INFO)
 
 
 class SearchChain(Chain):
     """Chain that takes input query and output search results."""
 
-    llm: LLM
-    searcher: BaseSearcher
+    llm: BaseLanguageModel
+    searcher: GoogleSearchAPIWrapper = GoogleSearchAPIWrapper()
     input_key: str = "query"
     output_key: str = "output"
+    max_context_length: int = 2000
+    max_num_queries: int = 3
 
     @property
     def _chain_type(self) -> str:
@@ -37,10 +43,19 @@ class SearchChain(Chain):
             input_variables=["query"], template=QUERY_EXPANSION_TEMPL
         )
         query_expansion_prompt = query_expansion_prompt.format(query=query)
-        related_queries_str = self.llm(query_expansion_prompt)
-        related_queries = self._parse_str_to_list(related_queries_str)
+        logging.info(f"Query expansion prompt: \n{query_expansion_prompt}")
+        res_str = self.llm(query_expansion_prompt)
+
+        try:
+            res = json.loads(res_str)
+            related_queries = res["related_queries"]
+            logging.info(f"Got related queries: {related_queries}")
+        except ValueError:
+            logging.info(f"Could not parse llm output: {res_str}")
+            related_queries = []
+
         queries = [query] + related_queries
-        # call search api to get earch query's search results
+        queries = queries[: self.max_num_queries]
         search_res_dict = self._search(queries)
         context = self._format_search_results(search_res_dict)
         qa_with_context_prompt = PromptTemplate(
@@ -49,22 +64,16 @@ class SearchChain(Chain):
         qa_with_context_prompt = qa_with_context_prompt.format(
             query=query, context=context
         )
+        logging.info(f"QA with context: {qa_with_context_prompt}")
         res = self.llm(qa_with_context_prompt)
         return {self.output_key: res}
-
-    def _parse_str_to_list(self, queries_str: str) -> List[str]:
-        res = eval(queries_str)
-        if isinstance(res, List):
-            return res
-        else:
-            return [res]
 
     def _format_search_results(self, search_res: Dict[str, str]) -> str:
         res = ""
         for q, ans in search_res.items():
-            res += q
-            res += ans
-            res += "\n"
+            res += q + "\n" + ans + "\n"
+        logging.info("Got full search results: %s", res)
+        res = res[: self.max_context_length]
         return res
 
     def _search(self, queries: List[str]) -> Dict[str, str]:
