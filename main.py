@@ -10,19 +10,19 @@ from baby_fox.llms.chatglm import ChatGLM
 def output_response(response: str) -> None:
     if not response:
         exit(0)
-    for line in textwrap.wrap(response, width=75):
+    for line in textwrap.wrap(response, width=60):
         for word in line.split():
             for char in word:
                 print(char, end="", flush=True)
                 time.sleep(0.1)  # Add a delay of 0.1 seconds between each character
             print(" ", end="", flush=True)  # Add a space between each word
         print()  # Move to the next line after each line is printed
-    print("-----")
+    print("----------------------------------------------------------------")
 
 
 if __name__ == "__main__":
     # llm = ChatGLM()
-    llm = OpenAI(temperature=0.0, model_name="gpt-3.5-turbo")
+    llm = OpenAI(temperature=0.0, model_name="gpt-3.5-turbo", max_tokens=2048)
     search_chain = SearchChain(llm=llm, verbose=True)
     while True:
         try:
