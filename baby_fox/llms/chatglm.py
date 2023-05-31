@@ -19,7 +19,7 @@ class ChatGLM(LLM):
     top_p: float = 0.9
     # endpoint url
     # 部署一个GPU的推理服务，通过 http request 访问
-    endpoint = "your endpoint url here"
+    endpoint = ""
 
     class Config:
         extra = Extra.forbid

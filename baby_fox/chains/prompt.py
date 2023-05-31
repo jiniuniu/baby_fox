@@ -7,7 +7,7 @@ Output:
 
 CONTEXT_BASED_ANSWER_TEMPL = """
 相关描述: {context}
-请严格基于上面的内容回答问题，字数在200字以内。
+请严格基于上面的内容回答问题。
 问题: {query}
 
 
