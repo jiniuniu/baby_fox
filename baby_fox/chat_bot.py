@@ -1,15 +1,6 @@
-from typing import Optional
-
 from langchain import LLMChain, PromptTemplate
 from langchain.base_language import BaseLanguageModel
 from langchain.memory import ConversationBufferWindowMemory
-
-from baby_fox.chains.prompt import (
-    CONTEXT_BASED_ANSWER_TEMPL,
-    PARAGRPAPH_TEMPL,
-    QUERY_EXPANSION_TEMPL,
-)
-from baby_fox.chains.search_chain import SearchChain
 
 CHAT_PROMPT_TMPL = """
 这是用户和AI的聊天历史

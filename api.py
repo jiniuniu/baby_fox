@@ -1,15 +1,20 @@
 import argparse
 import os
+from typing import List
 
 import uvicorn
-from fastapi import Body, FastAPI
+from fastapi import Body, FastAPI, File, Form, Query, UploadFile, WebSocket
 from langchain.llms import OpenAI
 from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from baby_fox.chat_bot import ChatBot
+from baby_fox.config import *
+from baby_fox.index.index_builder import IndexBuilder
 from baby_fox.llms.chatglm import ChatGLM
+from baby_fox.logger import setup_logger
 
-# DOC_STORE_DIR = "/home/data/"
+log = setup_logger(file_path=LOG_FILE_PATH)
 
 
 class BaseResponse(BaseModel):
@@ -38,19 +43,36 @@ async def chat(query: str = Body(..., description="query")):
     return Message(query=query, answer=answer)
 
 
-# async def local_doc_chat(
-#     doc_store_id: str = Body(..., description="document store id", example="ds-001"),
-#     query: str = Body(..., description="query text", example="请介绍下复歌科技这家公司"),
-# ):
-#     doc_store_path = os.path.join(DOC_STORE_DIR, doc_store_id)
-#     if not os.path.exists(doc_store_path):
-#         return Message(query=query, answer=f"没有{doc_store_id}这个本地知识库")
-#     else:
-#         answer = chat_bot.answer_based_on_local_doc(
-#             query, doc_store_path=doc_store_path
-#         )
-
-#     return Message(query=query, answer=answer)
+async def upload_files(
+    files: Annotated[
+        List[UploadFile], File(description="Multiple files as UploadFile")
+    ],
+    knowledge_name: str = Form(
+        ..., description="Knowledge_name", example="knowledge_about_fugetech"
+    ),
+):
+    file_dir = os.path.join(FILES_ROOT, knowledge_name)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+    filelist = []
+    for file in files:
+        file_content = ""
+        file_path = os.path.join(file_dir, file.filename)
+        file_content = file.file.read()
+        if os.path.exists(file_path) and os.path.getsize(file_path) == len(
+            file_content
+        ):
+            continue
+        with open(file_path, "ab+") as f:
+            f.write(file_content)
+        filelist.append(file_path)
+    if filelist:
+        loaded_files = IndexBuilder.build_index(filelist, knowledge_name)
+        if loaded_files:
+            file_status = f"已上传 {'、'.join([os.path.split(i)[-1] for i in loaded_files])} 至知识库，并已加载知识库，请开始提问"
+            return BaseResponse(code=200, msg=file_status)
+    file_status = "文件未成功加载，请重新上传文件"
+    return BaseResponse(code=500, msg=file_status)
 
 
 def start_server(host, port):
@@ -61,6 +83,7 @@ def start_server(host, port):
 
     app = FastAPI()
     app.post("/chat", response_model=Message)(chat)
+    app.post("/local_doc_qa/upload", response_model=BaseResponse)(upload_files)
     chat_bot = ChatBot(llm)
     uvicorn.run(app, host=host, port=port)
 
