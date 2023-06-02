@@ -18,3 +18,7 @@ EMBEDDING_MODEL_PATH = os.path.join(MODEL_ROOT, "GanymedeNil_text2vec-large-chin
 # 日志相关配置
 APP_LOGGER_NAME = "baby_fox"
 LOG_FILE_PATH = os.path.join(LOG_ROOT, f"{APP_LOGGER_NAME}.log")
+
+
+# 默认知识库名称
+DEFAULT_KNOWLEDGE_NAME = "fuge_tech"

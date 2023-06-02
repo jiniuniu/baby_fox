@@ -1,31 +1,48 @@
 import argparse
 import os
-from typing import List
+import shutil
+from typing import List, Optional
 
 import uvicorn
-from fastapi import Body, FastAPI, File, Form, Query, UploadFile, WebSocket
-from langchain.llms import OpenAI
+from fastapi import Body, FastAPI, File, Form, Query, UploadFile
 from pydantic import BaseModel, Field
+from starlette.responses import RedirectResponse
 from typing_extensions import Annotated
 
 from baby_fox.chat_bot import ChatBot
 from baby_fox.config import *
 from baby_fox.index.index_builder import IndexBuilder
-from baby_fox.llms.chatglm import ChatGLM
 from baby_fox.logger import setup_logger
 
 log = setup_logger(file_path=LOG_FILE_PATH)
 
 
+async def document():
+    return RedirectResponse(url="/docs")
+
+
 class BaseResponse(BaseModel):
     code: int = Field(200, description="HTTP status code")
-    msg: str = Field("SUCCESS", description="HTTP status message")
+    msg: str = Field("success", description="HTTP status message")
 
     class Config:
         schema_extra = {
             "example": {
                 "code": 200,
-                "msg": "SUCCESS",
+                "msg": "success",
+            }
+        }
+
+
+class ListDocsResponse(BaseResponse):
+    data: List[str] = Field(..., description="A list of documents names")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "code": 200,
+                "msg": "success",
+                "data": ["doc1.docx", "doc2.pdf", "doc3.txt"],
             }
         }
 
@@ -33,14 +50,21 @@ class BaseResponse(BaseModel):
 class Message(BaseModel):
     query: str = Field(..., description="query text")
     answer: str = Field(..., description="answer text")
+    sources: List[str] = Field(..., description="A list of source documents")
 
     class Config:
-        schema_extra = {"example": {"query": "AI你好", "answer": "用户你好"}}
+        schema_extra = {
+            "example": {
+                "query": "AI你好",
+                "answer": "用户你好",
+                "sources": ["出处 [1] ...", "出处 [2] ...", "出处 [3] ..."],
+            }
+        }
 
 
-async def chat(query: str = Body(..., description="query")):
+async def chat(query: str = Body(..., description="query")) -> Message:
     answer = chat_bot.answer_directly(query, chat_history_included=True)
-    return Message(query=query, answer=answer)
+    return Message(query=query, answer=answer, sources=[])
 
 
 async def upload_files(
@@ -48,9 +72,9 @@ async def upload_files(
         List[UploadFile], File(description="Multiple files as UploadFile")
     ],
     knowledge_name: str = Form(
-        ..., description="Knowledge_name", example="knowledge_about_fugetech"
+        ..., description="Knowledge name", example="fugetech_company_info"
     ),
-):
+) -> BaseResponse:
     file_dir = os.path.join(FILES_ROOT, knowledge_name)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
@@ -75,16 +99,70 @@ async def upload_files(
     return BaseResponse(code=500, msg=file_status)
 
 
-def start_server(host, port):
+async def list_files(
+    knowledge_name: str = Query(
+        default=None, description="Knowledge name", example="fugetech_company_info"
+    )
+) -> ListDocsResponse:
+    file_dir = os.path.join(FILES_ROOT, knowledge_name)
+    if not os.path.exists(file_dir):
+        return ListDocsResponse(code=1, msg=f"没有找到知识库：{knowledge_name}", data=[])
+    filenames = []
+    for obj in os.listdir(file_dir):
+        if os.path.isfile(os.path.join(file_dir, obj)):
+            filenames.append(obj)
+    return ListDocsResponse(data=filenames)
+
+
+async def delete_files(
+    knowledge_name: str = Query(
+        ...,
+        description="Knowledge name, this only deletes uploaded files, not index",
+        example="fugetech_company_info",
+    ),
+    filename: Optional[str] = Query(None, description="file name", example="doc1.pdf"),
+) -> BaseResponse:
+    file_dir = os.path.join(FILES_ROOT, knowledge_name)
+    if not os.path.exists(file_dir):
+        return BaseResponse(code=1, msg=f"没有找到知识库：{knowledge_name}")
+    if filename:
+        file_path = os.path.join(file_dir, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return BaseResponse(msg=f"文件：{filename} 删除成功")
+        else:
+            return BaseResponse(code=1, msg=f"没有找到文件：{filename}")
+    else:
+        shutil.rmtree(file_dir)
+        return BaseResponse(code=200, msg=f"知识库：{knowledge_name} 删除成功")
+
+
+async def local_knowledge_chat(
+    knowledge_name: str = Body(
+        ..., description="知识库名称", example="fugetech_company_info"
+    ),
+    question: str = Body(..., description="知识库相关提问", example="介绍下复歌科技的团队文化"),
+) -> Message:
+    index_path = os.path.join(INDEX_ROOT, knowledge_name)
+    if not os.path.exists(index_path):
+        return Message(query=question, answer=f"没有找到知识索引库：{knowledge_name}", sources=[])
+
+    answer, sources = chat_bot.answer_with_local_sources(question, index_path)
+    return Message(query=question, answer=answer, sources=sources)
+
+
+def start_server(host: str, port: int) -> None:
     global app
     global chat_bot
 
-    llm = OpenAI(temperature=0.0, model_name="gpt-3.5-turbo", max_tokens=2048)
-
     app = FastAPI()
+    app.get("/", response_model=BaseResponse)(document)
     app.post("/chat", response_model=Message)(chat)
-    app.post("/local_doc_qa/upload", response_model=BaseResponse)(upload_files)
-    chat_bot = ChatBot(llm)
+    app.post("/local_knowledge/chat", response_model=Message)(local_knowledge_chat)
+    app.post("/local_knowledge/upload", response_model=BaseResponse)(upload_files)
+    app.get("/local_knowledge/list_files", response_model=ListDocsResponse)(list_files)
+    app.post("/local_knowledge/delete", response_model=BaseResponse)(delete_files)
+    chat_bot = ChatBot()
     uvicorn.run(app, host=host, port=port)
 
 
