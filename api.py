@@ -12,6 +12,7 @@ from typing_extensions import Annotated
 from baby_fox.chat_bot import ChatBot
 from baby_fox.config import *
 from baby_fox.index.index_builder import IndexBuilder
+from baby_fox.llms.chatglm_api import ChatGLMApi
 from baby_fox.logger import setup_logger
 
 log = setup_logger(file_path=LOG_FILE_PATH)
@@ -163,6 +164,7 @@ def start_server(host: str, port: int) -> None:
     app.get("/local_knowledge/list_files", response_model=ListDocsResponse)(list_files)
     app.post("/local_knowledge/delete", response_model=BaseResponse)(delete_files)
     chat_bot = ChatBot()
+    chat_bot.llm = ChatGLMApi()
     uvicorn.run(app, host=host, port=port)
 
 

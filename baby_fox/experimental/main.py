@@ -3,8 +3,8 @@ import time
 
 from langchain.llms import OpenAI
 
-from baby_fox.chains.search_chain import SearchChain
-from baby_fox.llms.chatglm import ChatGLM
+from baby_fox.experimental.chains.search_chain import SearchChain
+from baby_fox.llms.chatglm_api import ChatGLMApi
 
 
 def output_response(response: str) -> None:
@@ -21,7 +21,7 @@ def output_response(response: str) -> None:
 
 
 if __name__ == "__main__":
-    # llm = ChatGLM()
+    # llm = ChatGLMApi()
     llm = OpenAI(temperature=0.0, model_name="gpt-3.5-turbo", max_tokens=2048)
     search_chain = SearchChain(llm=llm, verbose=True)
     while True:

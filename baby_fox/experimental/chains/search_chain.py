@@ -8,7 +8,7 @@ from langchain.base_language import BaseLanguageModel
 from langchain.chains.base import Chain
 from langchain.utilities.google_search import GoogleSearchAPIWrapper
 
-from baby_fox.chains.prompt import (
+from baby_fox.experimental.chains.prompt import (
     CONTEXT_BASED_ANSWER_TEMPL,
     PARAGRPAPH_TEMPL,
     QUERY_EXPANSION_TEMPL,
