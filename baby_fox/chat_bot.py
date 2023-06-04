@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from checksumdir import dirhash
 from langchain.base_language import BaseLanguageModel
@@ -9,6 +9,7 @@ from langchain.memory import ConversationBufferWindowMemory
 from langchain.vectorstores import FAISS
 
 from baby_fox.config import *
+from baby_fox.index.index_builder import IndexBuilder
 from baby_fox.logger import get_logger
 from baby_fox.prompts import (
     CHAT_PROMPT,
@@ -20,18 +21,27 @@ log = get_logger(__name__)
 
 
 class ChatBot:
+    """用来调度各种api的任务"""
+
+    # 底座大模型
     llm: BaseLanguageModel = OpenAIChat(
         temperature=0.0, model_name="gpt-3.5-turbo", max_tokens=2048
     )
     history_len: int = 5
+    # 初始调用的索引的路径信息
     last_index_path = os.path.join(INDEX_ROOT, DEFAULT_KNOWLEDGE_NAME)
     last_index_checksum = dirhash(last_index_path)
+    # embedding 模型的路径
     embeddings = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL_PATH, model_kwargs={"device": "cpu"}
     )
+    # 初始加载的索引
     index: FAISS = FAISS.load_local(last_index_path, embeddings)
 
-    # 两个对话历史库
+    # index_builder 上传文件任务和构建索引任务
+    index_builder = IndexBuilder(embeddings=embeddings)
+
+    # 两个用来存储对话历史对象（直接的对话和基于知识库的对话）
     local_knowledge_chat_memory = []
     chat_memory: ConversationBufferWindowMemory = ConversationBufferWindowMemory(
         k=history_len
@@ -98,3 +108,8 @@ class ChatBot:
         self.last_index_path = index_path
         self.last_index_checksum = index_checksum
         return True
+
+    def build_index(
+        self, filepath: Union[str, List[str]], index_name: str
+    ) -> List[str]:
+        return self.index_builder.build_index(filepath, index_name)

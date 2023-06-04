@@ -1,4 +1,3 @@
-import datetime
 import os
 from typing import List, Union
 
@@ -8,7 +7,7 @@ from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from tqdm import tqdm
 
-from baby_fox.config import *
+from baby_fox.config import INDEX_ROOT
 from baby_fox.index.text_tools import ChineseTextSplitter
 from baby_fox.logger import get_logger
 
@@ -31,12 +30,14 @@ def write_check_file(filepath, docs):
 
 class IndexBuilder:
     sentence_size: int = 100
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL_PATH, model_kwargs={"device": "cpu"}
-    )
+    index_root = INDEX_ROOT
 
-    @classmethod
-    def build_index(cls, filepath: Union[str, List[str]], index_name: str):
+    def __init__(self, embeddings: HuggingFaceEmbeddings) -> None:
+        self.embeddings = embeddings
+
+    def build_index(
+        self, filepath: Union[str, List[str]], index_name: str
+    ) -> List[str]:
         loaded_files = []
         failed_files = []
         if isinstance(filepath, str):
@@ -46,7 +47,7 @@ class IndexBuilder:
             elif os.path.isfile(filepath):
                 file = os.path.split(filepath)[-1]
                 try:
-                    docs = cls.load_file(filepath)
+                    docs = self.load_file(filepath)
                     log.info(f"{file} 已成功加载")
                     loaded_files.append(filepath)
                 except Exception as e:
@@ -58,7 +59,7 @@ class IndexBuilder:
                 for file in tqdm(os.listdir(filepath), desc="加载文件"):
                     fullfilepath = os.path.join(filepath, file)
                     try:
-                        docs += cls.load_file(fullfilepath)
+                        docs += self.load_file(fullfilepath)
                         loaded_files.append(fullfilepath)
                     except Exception as e:
                         log.error(e)
@@ -73,7 +74,7 @@ class IndexBuilder:
             docs = []
             for file in filepath:
                 try:
-                    docs += cls.load_file(file)
+                    docs += self.load_file(file)
                     log.info(f"{file} 已成功加载")
                     loaded_files.append(file)
                 except Exception as e:
@@ -82,33 +83,32 @@ class IndexBuilder:
 
         if len(docs) > 0:
             log.info("文件加载完毕，正在生成向量库")
-            index_path = os.path.join(INDEX_ROOT, index_name)
+            index_path = os.path.join(self.index_root, index_name)
             if os.path.isdir(index_path):
-                index = FAISS.load_local(index_path, cls.embeddings)
+                index = FAISS.load_local(index_path, self.embeddings)
                 index.add_documents(docs)
             else:
-                index = FAISS.from_documents(docs, cls.embeddings)
+                index = FAISS.from_documents(docs, self.embeddings)
             index.save_local(index_path)
             return loaded_files
         else:
             log.info("文件均未成功加载，请检查依赖包或替换为其他文件再次上传。")
             return loaded_files
 
-    @classmethod
-    def load_file(cls, filepath: str) -> List[Document]:
+    def load_file(self, filepath: str) -> List[Document]:
         if filepath.lower().endswith(".md"):
             loader = UnstructuredFileLoader(filepath, mode="elements")
             docs = loader.load()
         elif filepath.lower().endswith(".txt"):
             loader = TextLoader(filepath)
             text_splitter = ChineseTextSplitter(
-                pdf=False, sentence_size=cls.sentence_size
+                pdf=False, sentence_size=self.sentence_size
             )
             docs = loader.load_and_split(text_splitter)
         else:
             loader = UnstructuredFileLoader(filepath, mode="elements")
             text_splitter = ChineseTextSplitter(
-                pdf=False, sentence_size=cls.sentence_size
+                pdf=False, sentence_size=self.sentence_size
             )
             docs = loader.load_and_split(text_splitter=text_splitter)
 

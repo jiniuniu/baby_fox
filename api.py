@@ -11,7 +11,6 @@ from typing_extensions import Annotated
 
 from baby_fox.chat_bot import ChatBot
 from baby_fox.config import *
-from baby_fox.index.index_builder import IndexBuilder
 from baby_fox.llms.chatglm_api import ChatGLMApi
 from baby_fox.logger import setup_logger
 
@@ -73,7 +72,7 @@ async def upload_files(
         List[UploadFile], File(description="Multiple files as UploadFile")
     ],
     knowledge_name: str = Form(
-        ..., description="Knowledge name", example="fugetech_company_info"
+        ..., description="上传文件到的知识库名", example="fugetech_company_info"
     ),
 ) -> BaseResponse:
     file_dir = os.path.join(FILES_ROOT, knowledge_name)
@@ -92,7 +91,7 @@ async def upload_files(
             f.write(file_content)
         filelist.append(file_path)
     if filelist:
-        loaded_files = IndexBuilder.build_index(filelist, knowledge_name)
+        loaded_files = chat_bot.build_index(filelist, knowledge_name)
         if loaded_files:
             file_status = f"已上传 {'、'.join([os.path.split(i)[-1] for i in loaded_files])} 至知识库，并已加载知识库，请开始提问"
             return BaseResponse(code=200, msg=file_status)
@@ -102,7 +101,7 @@ async def upload_files(
 
 async def list_files(
     knowledge_name: str = Query(
-        default=None, description="Knowledge name", example="fugetech_company_info"
+        default=None, description="罗列知识库名下的文件", example="fugetech_company_info"
     )
 ) -> ListDocsResponse:
     file_dir = os.path.join(FILES_ROOT, knowledge_name)
@@ -118,10 +117,12 @@ async def list_files(
 async def delete_files(
     knowledge_name: str = Query(
         ...,
-        description="Knowledge name, this only deletes uploaded files, not index",
+        description="知识库名，删除该知识库下的文件（不会删除相应的索引）",
         example="fugetech_company_info",
     ),
-    filename: Optional[str] = Query(None, description="file name", example="doc1.pdf"),
+    filename: Optional[str] = Query(
+        None, description="文件名（删除知识库下的文件）", example="doc1.pdf"
+    ),
 ) -> BaseResponse:
     file_dir = os.path.join(FILES_ROOT, knowledge_name)
     if not os.path.exists(file_dir):
