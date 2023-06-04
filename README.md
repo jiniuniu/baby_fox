@@ -21,9 +21,7 @@ $ pip3 install --upgrade pip
 
 # 拉取仓库
 $ git clone https://github.com/jiniuniu/baby_fox.git
-# 执行下面2条命令，设置git学术资源加速
-$ git config --global http.proxy socks5h://172.16.16.39:8443
-$ git config --global https.proxy socks5h://172.16.16.39:8443
+
 
 # 进入目录
 $ cd baby_fox
@@ -39,6 +37,5 @@ $ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 1. 在挂载的网盘上创建对应的文件夹
 2. embedding: 下载 [GanymedeNil/text2vec-large-chinese](https://huggingface.co/GanymedeNil/text2vec-large-chinese/tree/main) 模型并存储在 `config.py` 对应的路径中。
- 
 
 ## Docker 部署
