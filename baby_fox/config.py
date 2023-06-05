@@ -1,9 +1,14 @@
 import os
 
-HOME_ROOT = os.environ.get("HOME")
+# 本地开发，路径不一样
+IS_LOCAL = True
 
-# 所有数据存储的根目录（包括模型、知识库文件、知识库索引、日志）
-DATA_ROOT = os.path.join(HOME_ROOT, "data")
+# 挂载路径
+if not IS_LOCAL:
+    DATA_ROOT = "/home/models/"
+else:
+    DATA_ROOT = os.path.join(os.getenv("HOME"), "data")
+
 MODEL_ROOT = os.path.join(DATA_ROOT, "imported_models")
 
 # 日志的存储路径
@@ -20,8 +25,9 @@ INDEX_ROOT = os.path.join(DATA_ROOT, "index_repo")
 # embedding 模型文件存储目录
 EMBEDDING_MODEL_PATH = os.path.join(MODEL_ROOT, "GanymedeNil_text2vec-large-chinese")
 # 默认知识库目录
-DEFAULT_KNOWLEDGE_NAME = "fuge_tech"
+DEFAULT_KNOWLEDGE_NAME = "marketing_knowledge_demo"
 
 
 # 如果本地部署chatGLM-6B，对应的路径
 CHATGLM_6B_MODEL_PATH = os.path.join(MODEL_ROOT, "chatglm-6b")
+CHATGLM_6B_API_ENDPOINT = os.getenv("CHATGLM_6B_API_ENDPOINT")

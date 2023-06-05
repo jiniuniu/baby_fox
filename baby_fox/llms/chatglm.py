@@ -2,11 +2,12 @@
 from typing import List, Optional
 
 import torch
-from config import CHATGLM_6B_MODEL_PATH
 from langchain.llms.base import LLM
 from langchain.llms.utils import enforce_stop_tokens
 from pydantic import Extra
 from transformers import AutoModel, AutoTokenizer
+
+from baby_fox.config import CHATGLM_6B_MODEL_PATH
 
 DEVICE = "cuda"
 DEVICE_ID = "0"
@@ -40,6 +41,9 @@ class ChatGLM(LLM):
 
     class Config:
         extra = Extra.forbid
+
+    def _llm_type(self) -> str:
+        return "chatglm_type"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         response, _ = self.model.chat(

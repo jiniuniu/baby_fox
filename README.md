@@ -3,39 +3,60 @@
 ## 简介
 基于企业私有数据构建专属知识库问答聊天工具，兼容 [langchain](https://github.com/hwchase17/langchain) 支持的所有大语言模型。
 
-## 部署 (working in progress)
+## 开发流程 (WIP)
 
-### 初始化安装环境
+### 1. 本地开发
+本地开发流程
 
 ```shell
-# 确认 Python 3.8 及以上版本
-$ python --version
-Python 3.11.0
-
-# 如果低于这个版本，可使用conda安装环境
-$ conda create -p /your_path/env_name python=3.11
-
-# 激活环境
-$ source activate /your_path/env_name
-$ pip3 install --upgrade pip
-
-# 拉取仓库
+# 下载代码仓库
 $ git clone https://github.com/jiniuniu/baby_fox.git
 
-
-# 进入目录
+# 进入项目
 $ cd baby_fox
 
- # 用清华的pip镜像源地址安装依赖
+# 安装依赖
 $ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
+# 安装 spacy 的中文包
+$ python -m spacy download zh_core_web_sm -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+# 启动服务
+$ python api.py
 ```
+服务启动之后打开 `localhost:27777`, 即可使用fastapi的doc的ui对每个API进行测试。
 
-### 设置参数
 
-打开文件 [baby_fox/config.py](baby_fox/config.py) 检查更改文件路径设置。
+### 2. 推理服务部署（待测试）
 
-1. 在挂载的网盘上创建对应的文件夹
-2. embedding: 下载 [GanymedeNil/text2vec-large-chinese](https://huggingface.co/GanymedeNil/text2vec-large-chinese/tree/main) 模型并存储在 `config.py` 对应的路径中。
+1. 本地跑通后，将 `IS_LOCAL` 设成 `FALSE`，执行下面的命令把代码上传到网盘
+    ```shell
+    # 首先参照 https://min.io/download下载并安装mc客户端，并进行如下配置：(需要 AKSK 鉴权信息)
+    $ mc alias set ark https://977007c2-1eb8-4069-83b3-3df187045692-s3.rde-ws.lanrui-ai.com <AK> <SK> --api S3v4
 
-## Docker 部署
+    $ mc ls <网盘挂载路径>
+    $ mc cp --recursive <本项目路径> <网盘挂载路径>
+    ```
+2. 创建推理服务，选择 3090 24G 显卡的机器，
+    - 选择 pytorch 公有镜像（official-1.12.1-cuda11.6-cudnn8-devel）
+    - 端口 27777
+    - 挂载网盘，填写挂载路径对应的是 [baby_fox/config.py](baby_fox/config.py) 的 `HOME_ROOT`。
+    - 启动脚本
+        ```shell
+        cd <挂载路径>/baby_fox
+        # 安装依赖
+        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+        # 安装spacy中文包
+        python -m spacy download zh_core_web_sm -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+        python3 api.py
+        ```
+    - 模型位置选择从网盘导入并设置挂载路径
+    - 高级配置中，不勾选挂载只读
+
+
+
+
+
+

@@ -1,15 +1,14 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 from checksumdir import dirhash
 from langchain.base_language import BaseLanguageModel
 from langchain.chains import ConversationalRetrievalChain, ConversationChain
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from langchain.llms import OpenAIChat
 from langchain.memory import ConversationBufferWindowMemory
+from langchain.schema import Document
 from langchain.vectorstores import FAISS
 
 from baby_fox.config import *
-from baby_fox.index.index_builder import IndexBuilder
 from baby_fox.logger import get_logger
 from baby_fox.prompts import (
     CHAT_PROMPT,
@@ -23,23 +22,8 @@ log = get_logger(__name__)
 class ChatBot:
     """用来调度各种api的任务"""
 
-    # 底座大模型
-    llm: BaseLanguageModel = OpenAIChat(
-        temperature=0.0, model_name="gpt-3.5-turbo", max_tokens=2048
-    )
+    # 对话保留的回合数
     history_len: int = 5
-    # 初始调用的索引的路径信息
-    last_index_path = os.path.join(INDEX_ROOT, DEFAULT_KNOWLEDGE_NAME)
-    last_index_checksum = dirhash(last_index_path)
-    # embedding 模型的路径
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL_PATH, model_kwargs={"device": "cpu"}
-    )
-    # 初始加载的索引
-    index: FAISS = FAISS.load_local(last_index_path, embeddings)
-
-    # index_builder 上传文件任务和构建索引任务
-    index_builder = IndexBuilder(embeddings=embeddings)
 
     # 两个用来存储对话历史对象（直接的对话和基于知识库的对话）
     local_knowledge_chat_memory = []
@@ -47,21 +31,32 @@ class ChatBot:
         k=history_len
     )
 
-    # 基于本地知识库聊天
-    local_knowledge_chat_chain: ConversationalRetrievalChain = (
-        ConversationalRetrievalChain.from_llm(
-            llm,
-            index.as_retriever(),
-            return_source_documents=True,
-            condense_question_prompt=CONDENSE_QUESTION_PROMPT,
-            combine_docs_chain_kwargs={"prompt": QA_WITH_CONTEXT_PROMPT},
-        )
-    )
+    def __init__(self, llm: BaseLanguageModel) -> None:
+        self.llm = llm
 
-    # 基于LLM自有知识库聊天
-    chat_chain: ConversationChain = ConversationChain(
-        llm=llm, memory=chat_memory, prompt=CHAT_PROMPT
-    )
+        # 初始化需要加载的索引工具
+        self.last_index_path = os.path.join(INDEX_ROOT, DEFAULT_KNOWLEDGE_NAME)
+        self.last_index_checksum = dirhash(self.last_index_path)
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL_PATH, model_kwargs={"device": "cpu"}
+        )
+        self.index: FAISS = FAISS.load_local(self.last_index_path, self.embeddings)
+
+        # 本地知识库 + LLM的聊天
+        self.local_knowledge_chat_chain: ConversationalRetrievalChain = (
+            ConversationalRetrievalChain.from_llm(
+                self.llm,
+                self.index.as_retriever(),
+                return_source_documents=True,
+                condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+                combine_docs_chain_kwargs={"prompt": QA_WITH_CONTEXT_PROMPT},
+            )
+        )
+
+        # 纯LLM聊天
+        self.chat_chain: ConversationChain = ConversationChain(
+            llm=llm, memory=self.chat_memory, prompt=CHAT_PROMPT
+        )
 
     def answer_directly(self, query: str, chat_history_included=True) -> str:
         if chat_history_included:
@@ -87,7 +82,7 @@ class ChatBot:
             {"question": query, "chat_history": self.local_knowledge_chat_memory}
         )
         answer = result["answer"]
-        related_docs = result["source_documents"]
+        related_docs: List[Document] = result["source_documents"]
 
         self.local_knowledge_chat_memory.append((query, answer))
         self.local_knowledge_chat_memory = self.local_knowledge_chat_memory[
@@ -108,8 +103,3 @@ class ChatBot:
         self.last_index_path = index_path
         self.last_index_checksum = index_checksum
         return True
-
-    def build_index(
-        self, filepath: Union[str, List[str]], index_name: str
-    ) -> List[str]:
-        return self.index_builder.build_index(filepath, index_name)

@@ -11,10 +11,30 @@ from typing_extensions import Annotated
 
 from baby_fox.chat_bot import ChatBot
 from baby_fox.config import *
-from baby_fox.llms.chatglm_api import ChatGLMApi
+from baby_fox.index.index_builder import IndexBuilder
 from baby_fox.logger import setup_logger
 
 log = setup_logger(file_path=LOG_FILE_PATH)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def init_environment():
+    # 初始化日志路径
+    if not os.path.exists(LOG_FILE_PATH):
+        os.makedirs(LOG_FILE_PATH)
+        log.info(f"创建日志路径：{LOG_FILE_PATH}")
+
+    # 初始化一个默认知识库
+    default_index_path = os.path.join(INDEX_ROOT, DEFAULT_KNOWLEDGE_NAME)
+    if not os.path.exists(default_index_path):
+        IndexBuilder.build_index(
+            os.path.join(CURRENT_DIR, "init_knowledge"), DEFAULT_KNOWLEDGE_NAME
+        )
+
+    # 初始化上传文件的路径
+    if not os.path.exists(FILES_ROOT):
+        os.makedirs(FILES_ROOT)
+        log.info(f"创建文件上传路径：{FILES_ROOT}")
 
 
 async def document():
@@ -91,7 +111,7 @@ async def upload_files(
             f.write(file_content)
         filelist.append(file_path)
     if filelist:
-        loaded_files = chat_bot.build_index(filelist, knowledge_name)
+        loaded_files = IndexBuilder.build_index(filelist, knowledge_name)
         if loaded_files:
             file_status = f"已上传 {'、'.join([os.path.split(i)[-1] for i in loaded_files])} 至知识库，并已加载知识库，请开始提问"
             return BaseResponse(code=200, msg=file_status)
@@ -157,6 +177,19 @@ def start_server(host: str, port: int) -> None:
     global app
     global chat_bot
 
+    init_environment()
+
+    if IS_LOCAL:
+        from baby_fox.llms.chatglm_api import ChatGLMApi
+
+        llm = ChatGLMApi()
+    else:
+        from baby_fox.llms.chatglm import ChatGLM
+
+        llm = ChatGLM()
+
+    chat_bot = ChatBot(llm=llm)
+
     app = FastAPI()
     app.get("/", response_model=BaseResponse)(document)
     app.post("/chat", response_model=Message)(chat)
@@ -164,8 +197,7 @@ def start_server(host: str, port: int) -> None:
     app.post("/local_knowledge/upload", response_model=BaseResponse)(upload_files)
     app.get("/local_knowledge/list_files", response_model=ListDocsResponse)(list_files)
     app.post("/local_knowledge/delete", response_model=BaseResponse)(delete_files)
-    chat_bot = ChatBot()
-    chat_bot.llm = ChatGLMApi()
+
     uvicorn.run(app, host=host, port=port)
 
 

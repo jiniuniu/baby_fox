@@ -7,6 +7,8 @@ from langchain.llms.base import LLM
 from langchain.llms.utils import enforce_stop_tokens
 from pydantic import Extra
 
+from baby_fox.config import CHATGLM_6B_API_ENDPOINT
+
 
 class ChatGLMApi(LLM):
     """Wrapper around ChatGLM API."""
@@ -19,7 +21,7 @@ class ChatGLMApi(LLM):
     top_p: float = 0.9
     # endpoint url
     # 部署一个GPU的推理服务，通过 http request 访问
-    endpoint = ""
+    endpoint: str = CHATGLM_6B_API_ENDPOINT
 
     class Config:
         extra = Extra.forbid
