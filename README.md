@@ -32,7 +32,7 @@ $ python api.py
 1. 本地跑通后，将 `IS_LOCAL` 设成 `FALSE`，执行下面的命令把代码上传到网盘
     ```shell
     # 首先参照 https://min.io/download下载并安装mc客户端，并进行如下配置：(需要 AKSK 鉴权信息)
-    $ mc alias set ark https://977007c2-1eb8-4069-83b3-3df187045692-s3.rde-ws.lanrui-ai.com <AK> <SK> --api S3v4
+    $ mc alias set ark <some lanrui url> <AK> <SK> --api S3v4
 
     $ mc ls <网盘挂载路径>
     $ mc cp --recursive <本项目路径> <网盘挂载路径>
