@@ -6,12 +6,12 @@ load_dotenv()
 
 class EnvironmentSettings(BaseSettings):
     OPENAI_API_KEY: str
-    KNOWN_ACCESS_TOKENS: list[str]
-    AGENT_DB_ROOT: str
+    KNOWN_ACCESS_TOKEN: str
     E2B_API_KEY: str
     MARTECH_KB_ENDPOINT: str
     MARTECH_KB_TOKEN: str
     TIAN_API_KEY: str
+    SQLALCHEMY_DATABASE_URI: str
 
     class Config:
         env_file = ".env"

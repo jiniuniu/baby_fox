@@ -4,10 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from server.config import env_settings
 
-SQLALCHEMY_DATABASE_URI = f"sqlite:///{env_settings.AGENT_DB_ROOT}/agent_config.db"
-
-
-engine = create_engine(SQLALCHEMY_DATABASE_URI)
+engine = create_engine(env_settings.SQLALCHEMY_DATABASE_URI)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

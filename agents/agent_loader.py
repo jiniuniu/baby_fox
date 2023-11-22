@@ -1,5 +1,3 @@
-import json
-from functools import lru_cache
 from typing import List
 
 from langchain.agents import AgentType, initialize_agent
@@ -28,7 +26,6 @@ class AgentConfig(BaseModel):
 
 class AgentLoader:
     @staticmethod
-    @lru_cache(128)
     def load_agent(agent_key: str) -> AgentExecutor:
         agent_config_str = get_from_db(agent_key)
         if agent_config_str is None:
@@ -38,12 +35,6 @@ class AgentLoader:
         instructions = agent_config.instructions
         tool_names = agent_config.tool_names
         model = agent_config.model
-        # llm = ChatOpenAI(
-        #     model=model,
-        #     api_key=env_settings.OPENAI_API_KEY,
-        #     streaming=True,
-        #     callbacks=[],
-        # )
         llm = ChatOpenAI(
             model=model,
             api_key=env_settings.OPENAI_API_KEY,

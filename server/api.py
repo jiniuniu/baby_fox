@@ -64,40 +64,6 @@ async def agent_chat(chat_request: ChatRequest) -> ChatResponse:
     return chat_response
 
 
-# @app.post("/agent_chat_stream")
-# async def agent_chat_stream(chat_request: ChatRequest):
-#     agent_key = chat_request.agent_key
-#     agent = AgentLoader.load_agent(agent_key)
-#     if agent is None:
-#         return BaseResponse(
-#             code=404,
-#             msg=f"did not find agent with key: {agent_key}",
-#         )
-#     user_message = chat_request.user_message
-#     chat_history = chat_request.chat_history
-#     agent.memory.chat_memory = process_chat_history(chat_history)
-
-#     async def create_gen(query: str, stream_it: AsyncCallbackHandler):
-#         task = asyncio.create_task(run_call(query, stream_it))
-#         async for token in stream_it.aiter():
-#             yield token
-#         await task
-
-#     async def run_call(query: str, stream_it: AsyncCallbackHandler):
-#         # assign callback handler
-#         agent.agent.llm_chain.callbacks = [stream_it]
-#         # now query
-#         await agent.acall(inputs={"input": query})
-
-#     stream_it = AsyncCallbackHandler()
-#     gen = create_gen(user_message, stream_it)
-
-#     return StreamingResponse(
-#         gen,
-#         media_type="text/event-stream",
-#     )
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="0.0.0.0")

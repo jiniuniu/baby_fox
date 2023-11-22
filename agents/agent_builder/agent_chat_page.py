@@ -9,9 +9,11 @@ from server.config import env_settings
 
 AGENT_CHAT_URL = "http://127.0.0.1:7862/agent_chat"
 
+TOKEN = env_settings.KNOWN_ACCESS_TOKEN
+
 
 HEADERS = {
-    f"Authorization": "Bearer 123",
+    "Authorization": f"Bearer {TOKEN}",
 }
 
 
