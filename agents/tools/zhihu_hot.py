@@ -51,6 +51,8 @@ class ZhihuHotEventsTool(BaseTool):
     """Tool that you can get up-to-date hot events list from zhihu."""
 
     name: str = "zhihu_hot_list"
+    num: int = 8
+    chinese_name: str = "知乎热榜"
 
     description: str = """实时更新的知乎的热榜，可以对当前发生的热点事件进行查询的工具，
     返回的结果是一个列表，每个元素包含热点的标题（title），热点的描述（excerpt）和链接（url）
@@ -64,7 +66,7 @@ class ZhihuHotEventsTool(BaseTool):
     ) -> str:
         hot_events = get_zhihu_hot_events()
         res = ""
-        for idx, event in enumerate(hot_events):
+        for idx, event in enumerate(hot_events[: self.num]):
             title = event["title"]
             excerpt = event["excerpt"]
             url = event["url"]

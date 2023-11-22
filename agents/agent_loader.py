@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from agents.db.repository import get_from_db
 from agents.tools import TOOL_MAP
-from agents.tools.seacher import BabyFoxSearchTool
+from agents.tools.searcher import BabyFoxSearchTool
 from server.config import env_settings
 
 
@@ -30,17 +30,27 @@ class AgentLoader:
     @staticmethod
     @lru_cache(128)
     def load_agent(agent_key: str) -> AgentExecutor:
-        agent_config_json_str = get_from_db(agent_key)
-        if agent_config_json_str is None:
+        agent_config_str = get_from_db(agent_key)
+        if agent_config_str is None:
             logger.info(f"can not find agent with key: {agent_key}")
             return
-        agent_config_json = json.loads(agent_config_json_str)
-        agent_config = AgentConfig.model_validate(agent_config_json)
+        agent_config = AgentConfig.model_validate_json(agent_config_str)
         instructions = agent_config.instructions
         tool_names = agent_config.tool_names
         model = agent_config.model
-        llm = ChatOpenAI(model=model, api_key=env_settings.OPENAI_API_KEY)
-        tools = [BabyFoxSearchTool()]
+        # llm = ChatOpenAI(
+        #     model=model,
+        #     api_key=env_settings.OPENAI_API_KEY,
+        #     streaming=True,
+        #     callbacks=[],
+        # )
+        llm = ChatOpenAI(
+            model=model,
+            api_key=env_settings.OPENAI_API_KEY,
+        )
+        tools = [
+            BabyFoxSearchTool(),
+        ]
         for tool_name in tool_names:
             tools.append(TOOL_MAP[tool_name])
         agent_kwargs = {
@@ -61,6 +71,7 @@ class AgentLoader:
         agent = initialize_agent(
             tools,
             llm,
+            max_iterations=3,
             agent=AgentType.OPENAI_FUNCTIONS,
             agent_kwargs=agent_kwargs,
             memory=memory,

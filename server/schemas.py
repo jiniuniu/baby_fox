@@ -14,6 +14,11 @@ class Message(BaseModel):
     content: str
 
 
+class ThoughtStep(BaseModel):
+    action_log: str
+    action_observation: str
+
+
 class BaseResponse(BaseModel):
     code: int = Field(200, description="API status code")
     msg: str = Field("success", description="API status message")
@@ -27,3 +32,4 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseResponse):
     agent_message: str = Field(..., description="agent message")
+    thought_steps: List[ThoughtStep] = Field(..., description="agent thought steps")

@@ -8,19 +8,20 @@ from pydantic import BaseModel, Field
 
 class SearchInput(BaseModel):
     query: str = Field(..., description="search query to look up")
-    site: Optional[str] = Field(
-        "",
-        description="""if site is provided, the search result will be only from the provided site, 
-        the input should be the domain only, no http or https, example of the this parameter would 
-        be "digitaling.com"        
-        """,
-    )
+    # site: Optional[str] = Field(
+    #     "",
+    #     description="""if site is provided, the search result will be only from the provided site,
+    #     the input should be the domain only, no http or https, example of the this parameter would
+    #     be "digitaling.com"
+    #     """,
+    # )
 
 
 class BabyFoxSearchTool(BaseTool):
     """Tool that queies DuckDuckGo search API"""
 
     name: str = "baby_fox_searcher"
+    chinese_name: str = "内置搜索"
     description: str = """A wrapper around DuckDuckGo Search. 
     Useful for when you need to answer questions about current events. 
     Input should be 
@@ -39,17 +40,16 @@ class BabyFoxSearchTool(BaseTool):
     def _run(
         self,
         query: str,
-        site: Optional[str] = "",
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Use the tool."""
-        if site != "":
-            if site.startswith("http://"):
-                domain = site.replace("http://", "").split("/")[0]
-            elif site.startswith("https://"):
-                domain = site.replace("https://", "").split("/")[0]
-            else:
-                domain = site.split("/")[0]
-            query += f" site:{domain}"
+        # if site != "":
+        #     if site.startswith("http://"):
+        #         domain = site.replace("http://", "").split("/")[0]
+        #     elif site.startswith("https://"):
+        #         domain = site.replace("https://", "").split("/")[0]
+        #     else:
+        #         domain = site.split("/")[0]
+        #     query += f" site:{domain}"
 
         return self.api_wrapper.run(query)

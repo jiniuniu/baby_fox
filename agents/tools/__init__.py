@@ -28,4 +28,4 @@ all_tools: List[BaseTool] = [
 
 TOOL_MAP = {}
 for tool in all_tools:
-    TOOL_MAP[tool.name] = tool
+    TOOL_MAP[tool.chinese_name] = tool

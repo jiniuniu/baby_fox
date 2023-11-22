@@ -33,8 +33,8 @@ def agent_store_page():
 
     if selection:
         agent_config_str = selection[0]["agent_config"]
-        agent_config = json.loads(agent_config_str)
-        st.session_state["agent_config"] = AgentConfig.model_validate(agent_config)
+        agent_config = AgentConfig.model_validate_json(agent_config_str)
+        st.session_state["agent_config"] = agent_config
         st.session_state["key"] = str(selection[0]["agent_key"])
         key = st.session_state["key"]
 
@@ -87,7 +87,12 @@ def create_new_config(key: str):
     if exists_in_db(key):
         st.warning(f"序号：{key} 已经存在了")
         return
-    agent_config_json_str = st.session_state["agent_config"].json(ensure_ascii=False)
+    agent_config: AgentConfig = st.session_state["agent_config"]
+    agent_config_json = agent_config.model_dump(mode="json")
+    agent_config_json_str = json.dumps(
+        agent_config_json,
+        ensure_ascii=False,
+    )
     add_or_update_to_db(
         key=key,
         agent_config=agent_config_json_str,
@@ -95,7 +100,12 @@ def create_new_config(key: str):
 
 
 def save_config(key: str):
-    agent_config_json_str = st.session_state["agent_config"].json(ensure_ascii=False)
+    agent_config: AgentConfig = st.session_state["agent_config"]
+    agent_config_json = agent_config.model_dump(mode="json")
+    agent_config_json_str = json.dumps(
+        agent_config_json,
+        ensure_ascii=False,
+    )
     add_or_update_to_db(
         key=key,
         agent_config=agent_config_json_str,
@@ -103,7 +113,6 @@ def save_config(key: str):
 
 
 def update_agent_config():
-    key = st.session_state["key"]
     agent_config: AgentConfig = st.session_state["agent_config"]
     name = st.text_input(
         "## 名称",
@@ -124,8 +133,10 @@ def update_agent_config():
         if tool_name in ALL_TOOL_NAMES
     ]
 
+    model = st.selectbox("## 模型选择", ["gpt-4-1106-preview", "gpt-3.5-turbo-1106"])
+
     selected_tool_names = st.multiselect(
-        "## 配置工具",
+        "## 配置工具（可多选）",
         ALL_TOOL_NAMES,
         tool_names,
     )
@@ -133,7 +144,7 @@ def update_agent_config():
     agent_config.description = description
     agent_config.instructions = instructions
     agent_config.tool_names = selected_tool_names
-    agent_config_json_str = st.session_state["agent_config"].json(ensure_ascii=False)
+    agent_config.model = model
 
 
 if __name__ == "__main__":

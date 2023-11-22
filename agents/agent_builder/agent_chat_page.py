@@ -1,63 +1,85 @@
+import json
+
+import requests
 import streamlit as st
-from langchain.callbacks import StreamlitCallbackHandler
-from langchain.memory.chat_message_histories import ChatMessageHistory
+from loguru import logger
 
-from agents.agent_loader import AgentLoader
 from agents.db.repository import list_all_keys
+from server.config import env_settings
 
-AVATARS = {"human": "user", "ai": "assistant"}
+AGENT_CHAT_URL = "http://127.0.0.1:7862/agent_chat"
+
+
+HEADERS = {
+    f"Authorization": "Bearer 123",
+}
 
 
 def setup_this_page():
-    if "msgs" not in st.session_state:
-        st.session_state["msgs"] = ChatMessageHistory()
-
-    if "steps" not in st.session_state:
-        st.session_state["steps"] = {}
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
 
 
 def clear_msgs():
-    if "msgs" in st.session_state:
-        msgs: ChatMessageHistory = st.session_state["msgs"]
-        msgs.clear()
-        msgs.add_ai_message("How can I help you?")
-        st.session_state.steps = {}
+    if "chat_history" in st.session_state:
+        st.session_state["chat_history"] = []
 
 
 def display_msgs():
-    if "msgs" in st.session_state:
-        msgs: ChatMessageHistory = st.session_state["msgs"]
-        for idx, msg in enumerate(msgs.messages):
-            with st.chat_message(AVATARS[msg.type]):
-                for step in st.session_state.steps.get(str(idx), []):
-                    if step[0].tool == "_Exception":
-                        continue
-                    with st.status(
-                        f"**{step[0].tool}**: {step[0].tool_input}", state="complete"
-                    ):
-                        st.write(step[0].log)
-                        st.write(step[1])
-                st.write(msg.content)
+    if "chat_history" in st.session_state:
+        for msg in st.session_state["chat_history"]:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
 
 
 def agent_chat_page():
     setup_this_page()
-    display_msgs()
+
     with st.sidebar:
         all_agent_keys = list_all_keys()
         selected_agent_key = st.selectbox("Choose your agent", all_agent_keys)
-        agent = AgentLoader.load_agent(selected_agent_key)
         clear_btn = st.button("clear chat history", use_container_width=True)
         if clear_btn:
             clear_msgs()
-
+    display_msgs()
     if prompt := st.chat_input():
         st.chat_message("user").write(prompt)
         with st.chat_message("assistant"):
-            st_callback = StreamlitCallbackHandler(st.container())
-            inp = {"input": prompt}
-            response = agent(inp, callbacks=[st_callback])
-            st.write(response["output"])
-            st.session_state.steps[
-                str(len(st.session_state["msgs"].messages) - 1)
-            ] = response["intermediate_steps"]
+            input_data = {
+                "user_message": prompt,
+                "agent_key": selected_agent_key,
+                "chat_history": st.session_state["chat_history"],
+            }
+            try:
+                resp = requests.post(
+                    headers=HEADERS,
+                    data=json.dumps(
+                        input_data,
+                        ensure_ascii=False,
+                    ).encode("utf-8"),
+                    url=AGENT_CHAT_URL,
+                )
+                resp.raise_for_status()
+            except Exception as e:
+                logger.error(f"error {e}")
+                st.stop()
+
+            response = resp.json()
+            agent_message = response["agent_message"]
+            thought_steps = response["thought_steps"]
+            with st.expander("思考过程"):
+                st.write(thought_steps)
+            st.write(agent_message)
+
+        st.session_state["chat_history"].append(
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        )
+        st.session_state["chat_history"].append(
+            {
+                "role": "assistant",
+                "content": agent_message,
+            }
+        )

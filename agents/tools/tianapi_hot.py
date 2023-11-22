@@ -51,6 +51,7 @@ class HotListInput(BaseModel):
 
 class WeiboHotListTool(BaseTool):
     name: str = "weibo_hot_list"
+    chinese_name: str = "微博热搜"
 
     description: str = """实时更新微博热搜，可以对当前微博上的热搜的短语进行查询的工具，
     返回的结果是一个列表，每个元素包含热搜的短语。
@@ -75,6 +76,7 @@ class WeiboHotListTool(BaseTool):
 
 class WXHotListTool(BaseTool):
     name: str = "wx_hot_list"
+    chinese_name: str = "微信热搜"
 
     description: str = """实时更新微信热搜，可以对当前微信公众平台热点话题进行查询的工具，
     返回的结果是一个列表，每个元素包含热点话题的短语。
@@ -99,6 +101,7 @@ class WXHotListTool(BaseTool):
 
 class NetworkHotListTool(BaseTool):
     name: str = "network_hot_list"
+    chinese_name: str = "全网热搜"
 
     description: str = """实时更新全网热搜，可以对全网热点话题进行查询的工具，
     返回的结果是一个列表，每个元素包含热点话题的短语。
@@ -123,6 +126,7 @@ class NetworkHotListTool(BaseTool):
 
 class DouyinHotListTool(BaseTool):
     name: str = "douyin_hot_list"
+    chinese_name: str = "抖音热搜"
 
     description: str = """实时更新抖音热搜，可以对抖音热点话题进行查询的工具，
     返回的结果是一个列表，每个元素包含热点话题的短语。
@@ -147,6 +151,7 @@ class DouyinHotListTool(BaseTool):
 
 class ToutiaoHotListTool(BaseTool):
     name: str = "toutiao_hot_list"
+    chinese_name: str = "头条热搜"
 
     description: str = """实时更新头条的热搜，可以对头条热点话题进行查询的工具，
     返回的结果是一个列表，每个元素包含热点话题的短语。
@@ -171,6 +176,7 @@ class ToutiaoHotListTool(BaseTool):
 
 class BaiduHotListTool(BaseTool):
     name: str = "baidu_hot_list"
+    chinese_name: str = "百度热搜"
 
     description: str = """实时更新百度热搜，可以对百度热搜的话题进行查询的工具，
     返回的结果是一个列表，每个元素包含热点话题的短语。

@@ -1,17 +1,16 @@
 import argparse
-import json
 
 import uvicorn
 from fastapi import Depends, FastAPI
-from loguru import logger
 from starlette.middleware.cors import CORSMiddleware
 
 from agents.agent_loader import AgentLoader
 from server.auth import get_token
-from server.schemas import BaseResponse, ChatRequest, ChatResponse
+from server.schemas import BaseResponse, ChatRequest, ChatResponse, ThoughtStep
 from server.utils import process_chat_history
 
 deps = [Depends(get_token)]
+
 
 app = FastAPI(dependencies=deps)
 
@@ -31,7 +30,7 @@ async def healthcheck() -> dict[str, str]:
 
 
 @app.post("/agent_chat")
-async def agent_chat(chat_request: ChatRequest) -> BaseResponse:
+async def agent_chat(chat_request: ChatRequest) -> ChatResponse:
     agent_key = chat_request.agent_key
     agent = AgentLoader.load_agent(agent_key)
     if agent is None:
@@ -44,9 +43,59 @@ async def agent_chat(chat_request: ChatRequest) -> BaseResponse:
     agent.memory.chat_memory = process_chat_history(chat_history)
     inp = {"input": user_message}
     response = agent(inp)
-    logger.info(f"agent response: {response}")
     agent_message = response["output"]
-    return ChatResponse(agent_message=agent_message)
+    thought_steps = []
+    intermediate_steps = response["intermediate_steps"]
+    for intermediate_step in intermediate_steps:
+        action_log = intermediate_step[0].log.strip()
+        action_observation = intermediate_step[1]
+        thought_steps.append(
+            ThoughtStep(
+                action_log=action_log,
+                action_observation=action_observation,
+            )
+        )
+
+    chat_response = ChatResponse(
+        agent_message=agent_message,
+        thought_steps=thought_steps,
+    )
+
+    return chat_response
+
+
+# @app.post("/agent_chat_stream")
+# async def agent_chat_stream(chat_request: ChatRequest):
+#     agent_key = chat_request.agent_key
+#     agent = AgentLoader.load_agent(agent_key)
+#     if agent is None:
+#         return BaseResponse(
+#             code=404,
+#             msg=f"did not find agent with key: {agent_key}",
+#         )
+#     user_message = chat_request.user_message
+#     chat_history = chat_request.chat_history
+#     agent.memory.chat_memory = process_chat_history(chat_history)
+
+#     async def create_gen(query: str, stream_it: AsyncCallbackHandler):
+#         task = asyncio.create_task(run_call(query, stream_it))
+#         async for token in stream_it.aiter():
+#             yield token
+#         await task
+
+#     async def run_call(query: str, stream_it: AsyncCallbackHandler):
+#         # assign callback handler
+#         agent.agent.llm_chain.callbacks = [stream_it]
+#         # now query
+#         await agent.acall(inputs={"input": query})
+
+#     stream_it = AsyncCallbackHandler()
+#     gen = create_gen(user_message, stream_it)
+
+#     return StreamingResponse(
+#         gen,
+#         media_type="text/event-stream",
+#     )
 
 
 if __name__ == "__main__":

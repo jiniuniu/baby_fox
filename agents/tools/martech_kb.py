@@ -48,6 +48,7 @@ class BeautiCareCaseSearchTool(BaseTool):
     """Tool that you can search marketing and ads creative cases for beauti care industry."""
 
     name: str = "beauti_care_case_search"
+    chinese_name: str = "美妆个护案例库"
 
     description: str = """美妆和个人护理行业的广告创意案例的查询工具，
     其中也包含了每个案例的受众人群、广告主、产品卖点等相关信息。"""
@@ -62,6 +63,7 @@ class BeautiCareCaseSearchTool(BaseTool):
 
 class MaternalToyCaseSearchTool(BaseTool):
     name: str = "maternal_toy_case_search"
+    chinese_name: str = "母婴玩具案例库"
 
     description: str = """母婴和玩具行业的广告创意案例的查询工具，
     其中也包含了每个案例的受众人群、广告主、产品卖点等相关信息。"""

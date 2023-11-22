@@ -3,7 +3,8 @@ from typing import Type
 from bs4 import BeautifulSoup
 from langchain.chains.summarize import load_summarize_chain
 from langchain.chat_models import ChatOpenAI
-from langchain.document_loaders import AsyncHtmlLoader
+from langchain.document_loaders import SeleniumURLLoader
+from langchain.document_transformers import Html2TextTransformer
 from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.tools import BaseTool
@@ -14,10 +15,13 @@ from server.config import env_settings
 
 def scrape_content(url, question):
     urls = [url]
-    loader = AsyncHtmlLoader(urls)
-    data = loader.load()
-    if data is not None and len(data) > 0:
-        soup = BeautifulSoup(data[0].page_content, "html.parser")
+    loader = SeleniumURLLoader(urls)
+    docs = loader.load()
+
+    if docs is not None and len(docs) > 0:
+        html2text = Html2TextTransformer()
+        docs_transformed = html2text.transform_documents(docs)
+        soup = BeautifulSoup(docs_transformed[0].page_content, "html.parser")
         # title = soup.find_all("div", attrs={"class": "project_title"})[0].text.strip()
         # content = soup.find_all("div", attrs={"id": "article_con"})[0].text
         # text = f"标题：{title}\n\n内容：\n{content}"
@@ -70,7 +74,8 @@ class ScraperInput(BaseModel):
 
 
 class BabyFoxScraperTool(BaseTool):
-    name = "website_scraper_tool"
+    name: str = "website_scraper_tool"
+    chinese_name: str = "内置爬虫"
     description = "useful when you need to get data from a website url, passing both url and question to the function; DO NOT make up any url, the url should only be from the search results"
     args_schema: Type[BaseModel] = ScraperInput
 
@@ -82,8 +87,8 @@ class BabyFoxScraperTool(BaseTool):
 
 
 if __name__ == "__main__":
-    url = "https://www.digitaling.com/projects/270458.html"
-    question = "对这个案例进行总结"
+    url = "https://creative.adquan.com/show/337681"
+    question = "对进行总结"
     tool = BabyFoxScraperTool()
     res = tool.run({"url": url, "question": question})
     print(res)
