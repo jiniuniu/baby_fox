@@ -38,6 +38,7 @@ class AgentLoader:
         llm = ChatOpenAI(
             model=model,
             api_key=env_settings.OPENAI_API_KEY,
+            streaming=True,
         )
         tools = [
             BabyFoxSearchTool(),

@@ -6,6 +6,7 @@ from yaml.loader import SafeLoader
 
 from agents.agent_builder.agent_chat_page import agent_chat_page
 from agents.agent_builder.agent_management_page import agent_store_page
+from agents.agent_builder.agent_stream_chat_page import agent_stream_chat_page
 
 
 def home_page():
@@ -16,7 +17,7 @@ def home_page():
         },
         "agent chat": {
             "icon": "robot",
-            "func": agent_chat_page,
+            "func": agent_stream_chat_page,
         },
     }
     with st.sidebar:

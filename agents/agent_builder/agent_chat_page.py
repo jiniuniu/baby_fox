@@ -7,7 +7,7 @@ from loguru import logger
 from agents.db.repository import list_all_keys
 from server.config import env_settings
 
-AGENT_CHAT_URL = "http://127.0.0.1:7862/agent_chat"
+AGENT_CHAT_URL = "http://43.153.32.28:7862/agent_chat"
 
 TOKEN = env_settings.KNOWN_ACCESS_TOKEN
 
@@ -35,18 +35,27 @@ def process_large_response(prompt: str, selected_agent_key: str):
         ) as response:
             response.raise_for_status()
 
-            # Buffer for partial content
-            buffer = ""
-            for chunk in response.iter_content(chunk_size=8192):
+            buffer = bytearray()
+            for chunk in response.iter_content(chunk_size=32):
                 if chunk:
-                    buffer += chunk.decode("utf-8")
+                    buffer.extend(chunk)
 
-                    # Process buffer here if possible
-                    # If your data allows for processing in parts,
-                    # you can process and clear the buffer here
+                    # Try to decode the buffer to a string
+                    try:
+                        data_str = buffer.decode("utf-8")
+                        buffer.clear()
 
-            # Final processing for any remaining data in the buffer
-            json_data = json.loads(buffer)
+                        # Process your data here as needed
+                        # ...
+
+                    except UnicodeDecodeError:
+                        # If there's a Unicode error, continue to the next chunk
+                        # and append more bytes to the buffer
+                        pass
+            # Process any remaining data after the loop
+            if buffer:
+                data_str = buffer.decode("utf-8")
+            json_data = json.loads(data_str)
             return json_data
 
     except requests.RequestException as e:
