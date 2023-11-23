@@ -6,3 +6,12 @@ langchain==0.0.339
 sqlalchemy==1.4.39
 duckduckgo-search==3.9.4
 python-dotenv==1.0.0
+loguru==0.7.2
+mysql-connector-python
+cachetools
+openai
+streamlit
+PyYAML
+streamlit-aggrid
+streamlit-option-menu
+streamlit-authenticator

@@ -17,6 +17,44 @@ HEADERS = {
 }
 
 
+def process_large_response(prompt: str, selected_agent_key: str):
+    input_data = {
+        "user_message": prompt,
+        "agent_key": selected_agent_key,
+        "chat_history": st.session_state["chat_history"],
+    }
+    try:
+        with requests.post(
+            headers=HEADERS,
+            data=json.dumps(
+                input_data,
+                ensure_ascii=False,
+            ).encode("utf-8"),
+            url=AGENT_CHAT_URL,
+            stream=True,
+        ) as response:
+            response.raise_for_status()
+
+            # Buffer for partial content
+            buffer = ""
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    buffer += chunk.decode("utf-8")
+
+                    # Process buffer here if possible
+                    # If your data allows for processing in parts,
+                    # you can process and clear the buffer here
+
+            # Final processing for any remaining data in the buffer
+            json_data = json.loads(buffer)
+            return json_data
+
+    except requests.RequestException as e:
+        logger.error(f"Error during requests: {str(e)}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parsing JSON: {str(e)}")
+
+
 def setup_this_page():
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
@@ -47,26 +85,7 @@ def agent_chat_page():
     if prompt := st.chat_input():
         st.chat_message("user").write(prompt)
         with st.chat_message("assistant"):
-            input_data = {
-                "user_message": prompt,
-                "agent_key": selected_agent_key,
-                "chat_history": st.session_state["chat_history"],
-            }
-            try:
-                resp = requests.post(
-                    headers=HEADERS,
-                    data=json.dumps(
-                        input_data,
-                        ensure_ascii=False,
-                    ).encode("utf-8"),
-                    url=AGENT_CHAT_URL,
-                )
-                resp.raise_for_status()
-            except Exception as e:
-                logger.error(f"error {e}")
-                st.stop()
-
-            response = resp.json()
+            response = process_large_response(prompt, selected_agent_key)
             agent_message = response["agent_message"]
             thought_steps = response["thought_steps"]
             with st.expander("思考过程"):
