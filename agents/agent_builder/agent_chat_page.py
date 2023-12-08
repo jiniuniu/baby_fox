@@ -7,7 +7,7 @@ from loguru import logger
 from agents.db.repository import list_all_keys
 from server.config import env_settings
 
-AGENT_CHAT_URL = "http://43.153.32.28:7862/agent_chat"
+AGENT_CHAT_URL = "http://127.0.0.1:7862/agent_stream_chat"
 
 TOKEN = env_settings.KNOWN_ACCESS_TOKEN
 
@@ -64,6 +64,44 @@ def process_large_response(prompt: str, selected_agent_key: str):
         logger.error(f"Error parsing JSON: {str(e)}")
 
 
+def process_response(prompt: str, selected_agent_key: str):
+    input_data = {
+        "user_message": prompt,
+        "agent_key": selected_agent_key,
+        "chat_history": [],
+    }
+    res = ""
+    container = st.container().empty()
+    try:
+        with requests.post(
+            headers=HEADERS,
+            data=json.dumps(
+                input_data,
+                ensure_ascii=False,
+            ).encode("utf-8"),
+            url=AGENT_CHAT_URL,
+            stream=True,
+        ) as response:
+            response.raise_for_status()
+
+            for chunk in response.iter_content(chunk_size=1024):
+                if not chunk:
+                    break
+                try:
+                    chunk = chunk.decode("'utf-8'")
+                    res += chunk
+                    container.markdown(res + " |")
+                except UnicodeDecodeError:
+                    st.info("Unicode decode error!")
+            container.markdown(res)
+        return res
+
+    except requests.RequestException as e:
+        logger.error(f"Error during requests: {str(e)}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parsing JSON: {str(e)}")
+
+
 def setup_this_page():
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
@@ -94,12 +132,15 @@ def agent_chat_page():
     if prompt := st.chat_input():
         st.chat_message("user").write(prompt)
         with st.chat_message("assistant"):
-            response = process_large_response(prompt, selected_agent_key)
-            agent_message = response["agent_message"]
-            thought_steps = response["thought_steps"]
-            with st.expander("思考过程"):
-                st.write(thought_steps)
-            st.write(agent_message)
+            # response = process_large_response(prompt, selected_agent_key)
+            resp = process_response(
+                prompt=prompt, selected_agent_key=selected_agent_key
+            )
+            agent_message = resp
+            # thought_steps = response["thought_steps"]
+            # with st.expander("思考过程"):
+            #     st.write(thought_steps)
+            # st.write(agent_message)
 
         st.session_state["chat_history"].append(
             {
@@ -113,3 +154,7 @@ def agent_chat_page():
                 "content": agent_message,
             }
         )
+
+
+if __name__ == "__main__":
+    agent_chat_page()

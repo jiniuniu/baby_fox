@@ -2,7 +2,9 @@ from typing import List
 
 from langchain.agents.tools import BaseTool
 
+from agents.tools.holiday_ad_searcher import HolidayAdSearchTool
 from agents.tools.martech_kb import BeautiCareCaseSearchTool, MaternalToyCaseSearchTool
+from agents.tools.searcher import BabyFoxSearchTool
 from agents.tools.tianapi_hot import (
     BaiduHotListTool,
     DouyinHotListTool,
@@ -23,6 +25,8 @@ all_tools: List[BaseTool] = [
     ToutiaoHotListTool(),
     WeiboHotListTool(),
     WXHotListTool(),
+    HolidayAdSearchTool(),
+    BabyFoxSearchTool(),
 ]
 
 

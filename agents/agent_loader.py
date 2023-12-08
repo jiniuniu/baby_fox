@@ -1,6 +1,6 @@
 from typing import List
 
-from langchain.agents import AgentType, initialize_agent
+from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.agents.agent import AgentExecutor
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
@@ -12,7 +12,6 @@ from pydantic import BaseModel
 
 from agents.db.repository import get_from_db
 from agents.tools import TOOL_MAP
-from agents.tools.searcher import BabyFoxSearchTool
 from server.config import env_settings
 
 
@@ -26,7 +25,7 @@ class AgentConfig(BaseModel):
 
 class AgentLoader:
     @staticmethod
-    def load_agent(agent_key: str) -> AgentExecutor:
+    def load_agent(agent_key: str, callbacks=None) -> AgentExecutor:
         agent_config_str = get_from_db(agent_key)
         if agent_config_str is None:
             logger.info(f"can not find agent with key: {agent_key}")
@@ -39,10 +38,9 @@ class AgentLoader:
             model=model,
             api_key=env_settings.OPENAI_API_KEY,
             streaming=True,
+            callbacks=callbacks,
         )
-        tools = [
-            BabyFoxSearchTool(),
-        ]
+        tools = load_tools(["wikipedia", "llm-math"], llm=llm)
         for tool_name in tool_names:
             tools.append(TOOL_MAP[tool_name])
         agent_kwargs = {
@@ -63,7 +61,6 @@ class AgentLoader:
         agent = initialize_agent(
             tools,
             llm,
-            max_iterations=3,
             agent=AgentType.OPENAI_FUNCTIONS,
             agent_kwargs=agent_kwargs,
             memory=memory,

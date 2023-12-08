@@ -21,7 +21,7 @@ class BabyFoxSearchTool(BaseTool):
     """Tool that queies DuckDuckGo search API"""
 
     name: str = "baby_fox_searcher"
-    chinese_name: str = "内置搜索"
+    chinese_name: str = "免费通用搜索"
     description: str = """A wrapper around DuckDuckGo Search. 
     Useful for when you need to answer questions about current events. 
     Input should be 
