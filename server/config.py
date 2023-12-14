@@ -12,6 +12,7 @@ class EnvironmentSettings(BaseSettings):
     MARTECH_KB_TOKEN: str
     TIAN_API_KEY: str
     SQLALCHEMY_DATABASE_URI: str
+    SQLALCHEMY_DATABASE_URI_LOCAL: str
 
     class Config:
         env_file = ".env"
