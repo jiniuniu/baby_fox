@@ -57,9 +57,6 @@ class BeautiCareCaseSearchTool(BaseTool):
     def _run(self, query: str):
         return search_cases(query, "beauti_care_processed_glm")
 
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
-
 
 class MaternalToyCaseSearchTool(BaseTool):
     name: str = "maternal_toy_case_search"
@@ -72,6 +69,3 @@ class MaternalToyCaseSearchTool(BaseTool):
 
     def _run(self, query: str):
         return search_cases(query, "toys_processed_glm")
-
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")

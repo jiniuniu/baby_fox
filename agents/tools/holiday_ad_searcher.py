@@ -160,9 +160,6 @@ class HolidayAdSearchTool(BaseTool):
         res = get_detail_page_contents(urls)
         return res
 
-    def _arun(self, holiday_keyword: str):
-        raise NotImplementedError("error here")
-
 
 if __name__ == "__main__":
     tool = HolidayAdSearchTool()

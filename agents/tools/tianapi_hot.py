@@ -70,9 +70,6 @@ class WeiboHotListTool(BaseTool):
             res += f"{idx + 1}. {hot_word}\n"
         return res
 
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
-
 
 class WXHotListTool(BaseTool):
     name: str = "wx_hot_list"
@@ -94,9 +91,6 @@ class WXHotListTool(BaseTool):
             hot_word = data["word"]
             res += f"{idx + 1}. {hot_word}\n"
         return res
-
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
 
 
 class NetworkHotListTool(BaseTool):
@@ -120,9 +114,6 @@ class NetworkHotListTool(BaseTool):
             res += f"{idx + 1}. {hot_word}\n"
         return res
 
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
-
 
 class DouyinHotListTool(BaseTool):
     name: str = "douyin_hot_list"
@@ -144,9 +135,6 @@ class DouyinHotListTool(BaseTool):
             hot_word = data["word"]
             res += f"{idx + 1}. {hot_word}\n"
         return res
-
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
 
 
 class ToutiaoHotListTool(BaseTool):
@@ -170,9 +158,6 @@ class ToutiaoHotListTool(BaseTool):
             res += f"{idx + 1}. {hot_word}\n"
         return res
 
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
-
 
 class BaiduHotListTool(BaseTool):
     name: str = "baidu_hot_list"
@@ -194,9 +179,6 @@ class BaiduHotListTool(BaseTool):
             hot_word = data["keyword"]
             res += f"{idx + 1}. {hot_word}\n"
         return res
-
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
 
 
 if __name__ == "__main__":

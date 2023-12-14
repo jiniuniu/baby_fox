@@ -65,10 +65,11 @@ def process_large_response(prompt: str, selected_agent_key: str):
 
 
 def process_response(prompt: str, selected_agent_key: str):
+    chat_history = st.session_state["chat_history"]
     input_data = {
         "user_message": prompt,
         "agent_key": selected_agent_key,
-        "chat_history": [],
+        "chat_history": chat_history,
     }
     res = ""
     container = st.container().empty()

@@ -73,6 +73,3 @@ class ZhihuHotEventsTool(BaseTool):
             res += f"{idx + 1}\n"
             res += f"标题：{title}\n简介：{excerpt}\n链接：{url}\n\n"
         return res
-
-    def _arun(self, query: str):
-        raise NotImplementedError("error here")
