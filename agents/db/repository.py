@@ -44,9 +44,9 @@ def exists_in_db(session, key):
 
 
 @with_session
-def list_all_keys(session):
+def list_all(session):
     records = session.query(AgentConfigModel).all()
-    res = []
+    res = {}
     for record in records:
-        res.append(record.key)
+        res[record.key] = record.agent_config
     return res

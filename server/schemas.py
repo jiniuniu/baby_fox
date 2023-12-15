@@ -33,3 +33,13 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseResponse):
     agent_message: str = Field(..., description="agent message")
     thought_steps: List[ThoughtStep] = Field(..., description="agent thought steps")
+
+
+class AgentInfo(BaseModel):
+    key: str = Field(..., description="agent key")
+    name: str = Field(..., description="agent's name")
+    description: str = Field(..., description="agent's description")
+
+
+class AgentsInfosResponse(BaseResponse):
+    agents_infos: List[AgentInfo] = Field(..., description="agents' infos")

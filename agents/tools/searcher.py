@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class SearchInput(BaseModel):
-    query: str = Field(..., description="search query to look up")
+    query: str = Field(..., description="需要查询的搜索短语")
     # site: Optional[str] = Field(
     #     "",
     #     description="""if site is provided, the search result will be only from the provided site,

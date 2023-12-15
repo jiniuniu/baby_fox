@@ -1,9 +1,9 @@
-from typing import Any
+import asyncio
+from typing import Any, Awaitable
 
 from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
 from langchain.memory.chat_message_histories import ChatMessageHistory
 from langchain.schema import LLMResult
-from loguru import logger
 
 from server.schemas import Message, Role
 
@@ -18,28 +18,20 @@ def process_chat_history(chat_history: list[Message]) -> ChatMessageHistory:
     return msgs
 
 
-# class AsyncCallbackHandler(AsyncIteratorCallbackHandler):
-#     content: str = ""
-#     final_answer: bool = False
+class MyAsyncCallbackHandler(AsyncIteratorCallbackHandler):
+    async def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        # Process the response object and extract the data you want to send
+        # For example, you could extract the generated text from the response
+        pass
 
-#     def __init__(self) -> None:
-#         super().__init__()
 
-#     async def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-#         self.content += token
-#         # if we passed the final answer, we put tokens in queue
-#         if self.final_answer:
-#             if '"action_input": "' in self.content:
-#                 if token not in ['"', "}"]:
-#                     self.queue.put_nowait(token)
-#         elif "Final Answer" in self.content:
-#             self.final_answer = True
-#             self.content = ""
-
-#     async def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-#         if self.final_answer:
-#             self.content = ""
-#             self.final_answer = False
-#             self.done.set()
-#         else:
-#             self.content = ""
+async def wrap_done(fn: Awaitable, event: asyncio.Event):
+    """Wrap an awaitable with a event to signal when it's done or an exception is raised."""
+    try:
+        await fn
+    except Exception as e:
+        # TODO: handle exception
+        print(f"Caught exception: {e}")
+    finally:
+        # Signal the aiter to stop.
+        event.set()

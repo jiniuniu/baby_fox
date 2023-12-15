@@ -4,59 +4,31 @@ import requests
 import streamlit as st
 from loguru import logger
 
-from agents.db.repository import list_all_keys
 from server.config import env_settings
 
-AGENT_CHAT_URL = "http://127.0.0.1:7862/agent_stream_chat"
-
+AGENT_URL = "http://127.0.0.1:7862"
+CHAT_ENDPOINT = "/agent_stream_chat"
+LIST_ENDPOINT = "/list_agents"
 TOKEN = env_settings.KNOWN_ACCESS_TOKEN
-
-
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
 }
 
 
-def process_large_response(prompt: str, selected_agent_key: str):
-    input_data = {
-        "user_message": prompt,
-        "agent_key": selected_agent_key,
-        "chat_history": st.session_state["chat_history"],
-    }
+def get_agents_infos():
+    key_and_names = []
     try:
-        with requests.post(
+        with requests.get(
             headers=HEADERS,
-            data=json.dumps(
-                input_data,
-                ensure_ascii=False,
-            ).encode("utf-8"),
-            url=AGENT_CHAT_URL,
-            stream=True,
-        ) as response:
-            response.raise_for_status()
+            url=f"{AGENT_URL}{LIST_ENDPOINT}",
+        ) as resp:
+            resp.raise_for_status()
+            res = resp.json()
 
-            buffer = bytearray()
-            for chunk in response.iter_content(chunk_size=32):
-                if chunk:
-                    buffer.extend(chunk)
-
-                    # Try to decode the buffer to a string
-                    try:
-                        data_str = buffer.decode("utf-8")
-                        buffer.clear()
-
-                        # Process your data here as needed
-                        # ...
-
-                    except UnicodeDecodeError:
-                        # If there's a Unicode error, continue to the next chunk
-                        # and append more bytes to the buffer
-                        pass
-            # Process any remaining data after the loop
-            if buffer:
-                data_str = buffer.decode("utf-8")
-            json_data = json.loads(data_str)
-            return json_data
+        agents_infos = res["agents_infos"]
+        for agent_info in agents_infos:
+            key_and_names.append(agent_info["key"] + ":" + agent_info["name"])
+        return key_and_names
 
     except requests.RequestException as e:
         logger.error(f"Error during requests: {str(e)}")
@@ -80,7 +52,7 @@ def process_response(prompt: str, selected_agent_key: str):
                 input_data,
                 ensure_ascii=False,
             ).encode("utf-8"),
-            url=AGENT_CHAT_URL,
+            url=f"{AGENT_URL}{CHAT_ENDPOINT}",
             stream=True,
         ) as response:
             response.raise_for_status()
@@ -124,8 +96,8 @@ def agent_chat_page():
     setup_this_page()
 
     with st.sidebar:
-        all_agent_keys = list_all_keys()
-        selected_agent_key = st.selectbox("Choose your agent", all_agent_keys)
+        key_and_names = get_agents_infos()
+        selected_agent = st.selectbox("Choose your agent", key_and_names)
         clear_btn = st.button("clear chat history", use_container_width=True)
         if clear_btn:
             clear_msgs()
@@ -134,6 +106,7 @@ def agent_chat_page():
         st.chat_message("user").write(prompt)
         with st.chat_message("assistant"):
             # response = process_large_response(prompt, selected_agent_key)
+            selected_agent_key = selected_agent.split(":")[0]
             resp = process_response(
                 prompt=prompt, selected_agent_key=selected_agent_key
             )

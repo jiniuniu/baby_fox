@@ -1,18 +1,23 @@
 import argparse
 import asyncio
-from typing import Any, Awaitable
 
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.responses import StreamingResponse
-from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
-from langchain.schema import LLMResult
 from starlette.middleware.cors import CORSMiddleware
 
-from agents.agent_loader import AgentLoader
+from agents.agent_loader import AgentConfig, AgentLoader
+from agents.db.repository import list_all
 from server.auth import get_token
-from server.schemas import BaseResponse, ChatRequest, ChatResponse, ThoughtStep
-from server.utils import process_chat_history
+from server.schemas import (
+    AgentInfo,
+    AgentsInfosResponse,
+    BaseResponse,
+    ChatRequest,
+    ChatResponse,
+    ThoughtStep,
+)
+from server.utils import MyAsyncCallbackHandler, process_chat_history, wrap_done
 
 deps = [Depends(get_token)]
 
@@ -32,6 +37,23 @@ app.add_middleware(
 @app.get("/healthcheck", include_in_schema=False)
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/list_agents")
+async def list_agents() -> AgentsInfosResponse:
+    agent_config_data = list_all()
+    res = []
+    for key, agent_config_str in agent_config_data.items():
+        agent_config = AgentConfig.model_validate_json(agent_config_str)
+        agent_name = agent_config.name
+        description = agent_config.description
+        agent_info = AgentInfo(
+            key=key,
+            name=agent_name,
+            description=description,
+        )
+        res.append(agent_info)
+    return AgentsInfosResponse(agents_infos=res)
 
 
 @app.post("/agent_chat")
@@ -69,27 +91,8 @@ async def agent_chat(chat_request: ChatRequest) -> ChatResponse:
     return chat_response
 
 
-async def wrap_done(fn: Awaitable, event: asyncio.Event):
-    """Wrap an awaitable with a event to signal when it's done or an exception is raised."""
-    try:
-        await fn
-    except Exception as e:
-        # TODO: handle exception
-        print(f"Caught exception: {e}")
-    finally:
-        # Signal the aiter to stop.
-        event.set()
-
-
-class MyAsyncCallbackHandler(AsyncIteratorCallbackHandler):
-    async def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        # Process the response object and extract the data you want to send
-        # For example, you could extract the generated text from the response
-        pass
-
-
 @app.post("/agent_stream_chat")
-async def agent_chat(chat_request: ChatRequest):
+async def agent_stream_chat(chat_request: ChatRequest):
     stream_it = MyAsyncCallbackHandler()
 
     agent_key = chat_request.agent_key
