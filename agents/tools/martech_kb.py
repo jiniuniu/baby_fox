@@ -41,7 +41,10 @@ def search_cases(query: str, category: str) -> str:
 
 
 class CaseSearchInput(BaseModel):
-    query: str = Field(..., description="search query to look up")
+    brand: str = Field("", description="品牌名称")
+    product: str = Field("", description="产品名称")
+    target_audience: str = Field("", description="产品的目标受众，包括使用场景")
+    selling_point: str = Field("", description="产品的卖点")
 
 
 class BeautiCareCaseSearchTool(BaseTool):
@@ -54,7 +57,19 @@ class BeautiCareCaseSearchTool(BaseTool):
     其中也包含了每个案例的受众人群、广告主、产品卖点等相关信息。"""
     args_schema: Type[BaseModel] = CaseSearchInput
 
-    def _run(self, query: str):
+    def _run(
+        self,
+        brand: str,
+        product: str,
+        target_audience: str,
+        selling_point: str,
+    ):
+        query = f"""
+        品牌：{brand}
+        产品：{product}
+        受众：{target_audience}
+        卖点：{selling_point}
+        """
         return search_cases(query, "beauti_care_processed_glm")
 
 
@@ -67,5 +82,17 @@ class MaternalToyCaseSearchTool(BaseTool):
 
     args_schema: Type[BaseModel] = CaseSearchInput
 
-    def _run(self, query: str):
-        return search_cases(query, "toys_processed_glm")
+    def _run(
+        self,
+        brand: str,
+        product: str,
+        target_audience: str,
+        selling_point: str,
+    ):
+        query = f"""
+        品牌：{brand}
+        产品：{product}
+        受众：{target_audience}
+        卖点：{selling_point}
+        """
+        return search_cases(query, "beauti_care_processed_glm")
