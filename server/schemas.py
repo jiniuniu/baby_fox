@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -43,3 +43,19 @@ class AgentInfo(BaseModel):
 
 class AgentsInfosResponse(BaseResponse):
     agents_infos: List[AgentInfo] = Field(..., description="agents' infos")
+
+
+class XhsIdeasRequest(BaseModel):
+    product_name: str = Field(..., description="产品名称")
+    selling_points: str = Field(..., description="产品的卖点功效")
+
+
+class XhsGenNoteRequest(BaseModel):
+    category_name: str = Field(..., description="品类名称")
+    product_name: str = Field(..., description="产品名称")
+    user_role: str = Field(..., description="人设")
+    scence: str = Field(..., description="场景")
+    information_channel: str = Field(..., description="信息渠道")
+    usage_experience: str = Field(..., description="使用感受")
+    usage_effect: str = Field(..., description="使用效果")
+    other_requirements: str = Field(..., description="其他要求")

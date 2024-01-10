@@ -1,13 +1,17 @@
 import argparse
 import asyncio
+from typing import Dict
 
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.responses import StreamingResponse
+from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
 from starlette.middleware.cors import CORSMiddleware
 
 from agents.agent_loader import AgentConfig, AgentLoader
 from agents.db.repository import list_all
+from chains import build_xhs_chain_by_type
+from chains.xhs.data_source import get_general_keywords, get_xhs_note
 from server.auth import get_token
 from server.schemas import (
     AgentInfo,
@@ -16,6 +20,8 @@ from server.schemas import (
     ChatRequest,
     ChatResponse,
     ThoughtStep,
+    XhsGenNoteRequest,
+    XhsIdeasRequest,
 )
 from server.utils import MyAsyncCallbackHandler, process_chat_history, wrap_done
 
@@ -119,6 +125,89 @@ async def agent_stream_chat(chat_request: ChatRequest):
         await task
 
     gen = create_gen(user_message)
+    return StreamingResponse(gen, media_type="text/event-stream")
+
+
+@app.post("/xhs_ideas")
+async def generate_xhs_ideas(xhs_ideas_req: XhsIdeasRequest):
+    stream_it = AsyncIteratorCallbackHandler()
+    idea_generator = build_xhs_chain_by_type(
+        chain_type="xhs_ideas",
+        callbacks=[stream_it],
+    )
+    product_name = xhs_ideas_req.product_name
+    selling_points = xhs_ideas_req.selling_points
+
+    inp = {
+        "product_name": product_name,
+        "selling_points": selling_points,
+    }
+
+    async def create_gen(inp: Dict):
+        task = asyncio.create_task(
+            wrap_done(
+                idea_generator.acall(inp),
+                stream_it.done,
+            )
+        )
+        async for token in stream_it.aiter():
+            yield token
+        await task
+
+    gen = create_gen(inp)
+    return StreamingResponse(gen, media_type="text/event-stream")
+
+
+@app.post("/xhs_gen_note_from_idea")
+async def generate_xhs_note_from_idea(xhs_gen_note_req: XhsGenNoteRequest):
+    stream_it = AsyncIteratorCallbackHandler()
+    note_creator = build_xhs_chain_by_type(
+        chain_type="xhs_note_creator",
+        callbacks=[stream_it],
+    )
+    product_name = xhs_gen_note_req.product_name
+    category_name = xhs_gen_note_req.category_name
+    user_role = xhs_gen_note_req.user_role
+    scence = xhs_gen_note_req.scence
+    information_channel = xhs_gen_note_req.information_channel
+    usage_experience = xhs_gen_note_req.usage_experience
+    usage_effect = xhs_gen_note_req.usage_effect
+    other_requirements = xhs_gen_note_req.other_requirements
+
+    note_data = get_xhs_note(category_name)
+    title = note_data.get("title") or ""
+    content = note_data.get("content") or ""
+    case_keywords = note_data.get("case_keywords") or []
+    case_keywords = "\n".join(case_keywords)
+    general_keywords = get_general_keywords()
+    general_keywords = "\n".join(general_keywords)
+
+    inp = {
+        "user_role": user_role,
+        "scence": scence,
+        "information_channel": information_channel,
+        "usage_experience": usage_experience,
+        "usage_effect": usage_effect,
+        "other_requirements": other_requirements,
+        "general_keywords": general_keywords,
+        "case_keywords": case_keywords,
+        "title": title,
+        "content": content,
+        "product_name": product_name,
+    }
+
+    async def create_gen(inp: Dict):
+        task = asyncio.create_task(
+            wrap_done(
+                note_creator.acall(inp),
+                stream_it.done,
+            )
+        )
+        async for token in stream_it.aiter():
+            yield token
+        await task
+
+    gen = create_gen(inp)
     return StreamingResponse(gen, media_type="text/event-stream")
 
 
