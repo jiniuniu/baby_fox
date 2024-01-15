@@ -59,3 +59,7 @@ class XhsGenNoteRequest(BaseModel):
     usage_experience: str = Field(..., description="使用感受")
     usage_effect: str = Field(..., description="使用效果")
     other_requirements: str = Field(..., description="其他要求")
+
+
+class XhsNoteRequest(XhsIdeasRequest):
+    category_name: str = Field(..., description="品类名称")

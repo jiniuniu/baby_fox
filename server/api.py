@@ -1,11 +1,14 @@
 import argparse
 import asyncio
+import random
 from typing import Dict
 
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.responses import StreamingResponse
 from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
+from langchain.output_parsers.json import parse_json_markdown
+from loguru import logger
 from starlette.middleware.cors import CORSMiddleware
 
 from agents.agent_loader import AgentConfig, AgentLoader
@@ -22,6 +25,7 @@ from server.schemas import (
     ThoughtStep,
     XhsGenNoteRequest,
     XhsIdeasRequest,
+    XhsNoteRequest,
 )
 from server.utils import MyAsyncCallbackHandler, process_chat_history, wrap_done
 
@@ -147,6 +151,68 @@ async def generate_xhs_ideas(xhs_ideas_req: XhsIdeasRequest):
         task = asyncio.create_task(
             wrap_done(
                 idea_generator.acall(inp),
+                stream_it.done,
+            )
+        )
+        async for token in stream_it.aiter():
+            yield token
+        await task
+
+    gen = create_gen(inp)
+    return StreamingResponse(gen, media_type="text/event-stream")
+
+
+@app.post("/xhs_gen_note")
+async def gen_xhs_note(xhs_note_req: XhsNoteRequest):
+    stream_it = AsyncIteratorCallbackHandler()
+    idea_generator = build_xhs_chain_by_type(chain_type="xhs_ideas")
+    note_creator = build_xhs_chain_by_type(
+        chain_type="xhs_note_creator",
+        callbacks=[stream_it],
+    )
+    product_name = xhs_note_req.product_name
+    selling_points = xhs_note_req.selling_points
+    idea_inp = {
+        "product_name": product_name,
+        "selling_points": selling_points,
+    }
+    ideas = idea_generator(idea_inp)["text"]
+    ideas = parse_json_markdown(ideas)
+    idea = random.choice(ideas)
+    logger.info(f"selected idea: {idea}")
+    user_role = idea.get("user_role")
+    scence = idea.get("scence")
+    information_channel = idea.get("information_channel")
+    usage_experience = idea.get("usage_experience")
+    usage_effect = idea.get("usage_effect")
+    other_requirements = idea.get("other_requirements")
+    category_name = xhs_note_req.category_name
+    note_data = get_xhs_note(category_name)
+    title = note_data.get("title") or ""
+    content = note_data.get("content") or ""
+    case_keywords = note_data.get("case_keywords") or []
+    case_keywords = "\n".join(case_keywords)
+    general_keywords = get_general_keywords()
+    general_keywords = "\n".join(general_keywords)
+
+    inp = {
+        "user_role": user_role,
+        "scence": scence,
+        "information_channel": information_channel,
+        "usage_experience": usage_experience,
+        "usage_effect": usage_effect,
+        "other_requirements": other_requirements,
+        "general_keywords": general_keywords,
+        "case_keywords": case_keywords,
+        "title": title,
+        "content": content,
+        "product_name": product_name,
+    }
+
+    async def create_gen(inp: Dict):
+        task = asyncio.create_task(
+            wrap_done(
+                note_creator.acall(inp),
                 stream_it.done,
             )
         )

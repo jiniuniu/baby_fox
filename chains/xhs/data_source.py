@@ -109,7 +109,7 @@ def get_xhs_note(topic_name: str):
         )
         resp.raise_for_status()
         resp = resp.json()
-        logger.info(resp)
+        # logger.info(resp)
     except requests.RequestException as e:
         logger.error(f"Error during requests: {str(e)}")
     except json.JSONDecodeError as e:
