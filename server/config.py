@@ -13,6 +13,7 @@ class EnvironmentSettings(BaseSettings):
     TIAN_API_KEY: str
     SQLALCHEMY_DATABASE_URI: str
     SQLALCHEMY_DATABASE_URI_LOCAL: str
+    GLM4_API_KEY: str
 
     class Config:
         env_file = ".env"

@@ -15,6 +15,7 @@ from agents.agent_loader import AgentConfig, AgentLoader
 from agents.db.repository import list_all
 from chains import build_xhs_chain_by_type
 from chains.xhs.data_source import get_general_keywords, get_xhs_note
+from chains.xhs.glm4_demo import XhsGLM4
 from server.auth import get_token
 from server.schemas import (
     AgentInfo,
@@ -28,6 +29,8 @@ from server.schemas import (
     XhsNoteRequest,
 )
 from server.utils import MyAsyncCallbackHandler, process_chat_history, wrap_done
+
+xhs_glm4 = XhsGLM4()
 
 deps = [Depends(get_token)]
 
@@ -162,68 +165,6 @@ async def generate_xhs_ideas(xhs_ideas_req: XhsIdeasRequest):
     return StreamingResponse(gen, media_type="text/event-stream")
 
 
-@app.post("/xhs_gen_note")
-async def gen_xhs_note(xhs_note_req: XhsNoteRequest):
-    stream_it = AsyncIteratorCallbackHandler()
-    idea_generator = build_xhs_chain_by_type(chain_type="xhs_ideas")
-    note_creator = build_xhs_chain_by_type(
-        chain_type="xhs_note_creator",
-        callbacks=[stream_it],
-    )
-    product_name = xhs_note_req.product_name
-    selling_points = xhs_note_req.selling_points
-    idea_inp = {
-        "product_name": product_name,
-        "selling_points": selling_points,
-    }
-    ideas = idea_generator(idea_inp)["text"]
-    ideas = parse_json_markdown(ideas)
-    idea = random.choice(ideas)
-    logger.info(f"selected idea: {idea}")
-    user_role = idea.get("user_role")
-    scence = idea.get("scence")
-    information_channel = idea.get("information_channel")
-    usage_experience = idea.get("usage_experience")
-    usage_effect = idea.get("usage_effect")
-    other_requirements = idea.get("other_requirements")
-    category_name = xhs_note_req.category_name
-    note_data = get_xhs_note(category_name)
-    title = note_data.get("title") or ""
-    content = note_data.get("content") or ""
-    case_keywords = note_data.get("case_keywords") or []
-    case_keywords = "\n".join(case_keywords)
-    general_keywords = get_general_keywords()
-    general_keywords = "\n".join(general_keywords)
-
-    inp = {
-        "user_role": user_role,
-        "scence": scence,
-        "information_channel": information_channel,
-        "usage_experience": usage_experience,
-        "usage_effect": usage_effect,
-        "other_requirements": other_requirements,
-        "general_keywords": general_keywords,
-        "case_keywords": case_keywords,
-        "title": title,
-        "content": content,
-        "product_name": product_name,
-    }
-
-    async def create_gen(inp: Dict):
-        task = asyncio.create_task(
-            wrap_done(
-                note_creator.acall(inp),
-                stream_it.done,
-            )
-        )
-        async for token in stream_it.aiter():
-            yield token
-        await task
-
-    gen = create_gen(inp)
-    return StreamingResponse(gen, media_type="text/event-stream")
-
-
 @app.post("/xhs_gen_note_from_idea")
 async def generate_xhs_note_from_idea(xhs_gen_note_req: XhsGenNoteRequest):
     stream_it = AsyncIteratorCallbackHandler()
@@ -275,6 +216,45 @@ async def generate_xhs_note_from_idea(xhs_gen_note_req: XhsGenNoteRequest):
 
     gen = create_gen(inp)
     return StreamingResponse(gen, media_type="text/event-stream")
+
+
+@app.post("/xhs_gen_ideas_glm4")
+def gen_ideas_glm4(xhs_ideas_req: XhsIdeasRequest):
+    product_name = xhs_ideas_req.product_name
+    selling_points = xhs_ideas_req.selling_points
+
+    return StreamingResponse(
+        xhs_glm4.generate_ideas(
+            product_name=product_name,
+            selling_points=selling_points,
+        ),
+        media_type="text/event-stream",
+    )
+
+
+@app.post("/xhs_gen_note_from_idea_glm4")
+async def generate_xhs_note_from_idea_glm4(xhs_gen_note_req: XhsGenNoteRequest):
+    product_name = xhs_gen_note_req.product_name
+    category_name = xhs_gen_note_req.category_name
+    user_role = xhs_gen_note_req.user_role
+    scence = xhs_gen_note_req.scence
+    information_channel = xhs_gen_note_req.information_channel
+    usage_experience = xhs_gen_note_req.usage_experience
+    usage_effect = xhs_gen_note_req.usage_effect
+    other_requirements = xhs_gen_note_req.other_requirements
+    return StreamingResponse(
+        xhs_glm4.create_note(
+            topic_name=category_name,
+            user_role=user_role,
+            scence=scence,
+            information_channel=information_channel,
+            usage_experience=usage_experience,
+            usage_effect=usage_effect,
+            other_requirements=other_requirements,
+            product_name=product_name,
+        ),
+        media_type="text/event-stream",
+    )
 
 
 if __name__ == "__main__":
